@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authelia User Management</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+        }
+
+        .header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+        }
+
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem 2rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-card h3 {
+            font-size: 0.875rem;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .stat-danger {
+            color: #e53e3e !important;
+        }
+
+        .stat-warning {
+            color: #dd6b20 !important;
+        }
+
+        .stat-success {
+            color: #38a169 !important;
+        }
+
+        .toolbar {
+            padding: 1.5rem 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #2d3748;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        .table-container {
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f8f9fa;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th:hover {
+            background: #e2e8f0;
+        }
+
+        th.sortable::after {
+            content: ' ↕';
+            opacity: 0.3;
+        }
+
+        th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            margin-right: 0.25rem;
+        }
+
+        .badge.admin {
+            background: #764ba2;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #718096;
+            font-size: 0.875rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .file-upload-zone {
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-upload-zone:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .file-upload-zone.dragover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .import-results {
+            margin-top: 1rem;
+        }
+
+        .result-section {
+            margin-bottom: 1rem;
+        }
+
+        .result-section h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        .result-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        /* Password Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .status-ok {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-expiring {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-unknown {
+            background: #e2e8f0;
+            color: #718096;
+        }
+
+        /* Password Strength Meter */
+        .password-strength-container {
+            margin-top: 0.5rem;
+        }
+
+        .password-strength-bar {
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 0.25rem;
+        }
+
+        .password-strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .password-strength-fill.weak {
+            background: #e53e3e;
+            width: 33%;
+        }
+
+        .password-strength-fill.medium {
+            background: #dd6b20;
+            width: 66%;
+        }
+
+        .password-strength-fill.strong {
+            background: #38a169;
+            width: 100%;
+        }
+
+        .password-strength-text {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.25rem;
+        }
+
+        .password-strength-text.weak {
+            color: #e53e3e;
+        }
+
+        .password-strength-text.medium {
+            color: #dd6b20;
+        }
+
+        .password-strength-text.strong {
+            color: #38a169;
+        }
+
+        /* Password Requirements Checklist */
+        .password-requirements {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #cbd5e0;
+        }
+
+        .requirement {
+            display: block;
+            font-size: 0.75rem;
+            color: #718096;
+            transition: color 0.2s ease;
+        }
+
+        .requirement.met {
+            color: #38a169;
+            font-weight: 600;
+        }
+
+        .requirement.met::before {
+            content: '✓ ';
+        }
+
+        .requirement:not(.met)::before {
+            content: '○ ';
+        }
+
+        /* Breach Check Status */
+        .breach-check-status {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.813rem;
+        }
+
+        .breach-check-status.checking {
+            background: #ebf8ff;
+            border-left: 3px solid #3182ce;
+        }
+
+        .breach-check-status.safe {
+            background: #f0fff4;
+            border-left: 3px solid #38a169;
+        }
+
+        .breach-check-status.breached {
+            background: #fff5f5;
+            border-left: 3px solid #e53e3e;
+        }
+
+        .breach-check-status small {
+            color: inherit;
+            font-weight: 600;
+        }
+
+        .breach-check-status.checking small {
+            color: #2c5282;
+        }
+
+        .breach-check-status.safe small {
+            color: #22543d;
+        }
+
+        .breach-check-status.breached small {
+            color: #742a2a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>👤 User Management</h1>
+            <p>Manage Authelia user accounts</p>
+        </div>
+
+        <!-- Statistics Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <div class="value" id="totalUsers">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Admin Users</h3>
+                <div class="value" id="adminUsers">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Regular Users</h3>
+                <div class="value" id="regularUsers">-</div>
+            </div>
+            <div class="stat-card" id="expiredPasswordsCard" style="display: none;">
+                <h3>Passwords Expired</h3>
+                <div class="value stat-danger" id="expiredPasswords">-</div>
+            </div>
+            <div class="stat-card" id="expiringSoonCard" style="display: none;">
+                <h3>Expiring Soon</h3>
+                <div class="value stat-warning" id="expiringSoon">-</div>
+            </div>
+            <div class="stat-card" id="healthyPasswordsCard" style="display: none;">
+                <h3>Healthy Passwords</h3>
+                <div class="value stat-success" id="healthyPasswords">-</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search users by name, email, or username...">
+            </div>
+            <button class="btn btn-primary" onclick="openCreateModal()">+ Add User</button>
+            <button class="btn btn-secondary" onclick="openImportModal()">📤 Import CSV</button>
+            <button class="btn btn-secondary" onclick="exportUsers()">📥 Export CSV</button>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="username">Username</th>
+                        <th class="sortable" data-sort="displayname">Display Name</th>
+                        <th class="sortable" data-sort="email">Email</th>
+                        <th class="sortable" data-sort="groups">Groups</th>
+                        <th class="sortable" data-sort="password_age_days">Password Age</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem; color: #718096;">
+                            Loading users...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Create/Edit User Modal -->
+    <div class="modal" id="userModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New User</h2>
+            </div>
+            <div id="modalAlert"></div>
+            <form id="userForm">
+                <div class="form-group">
+                    <label for="username">Username *</label>
+                    <input type="text" id="username" required pattern="[a-zA-Z0-9_\-]+">
+                    <small>Letters, numbers, hyphens, and underscores only</small>
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" required>
+
+                    <!-- Password Strength Meter -->
+                    <div class="password-strength-container">
+                        <div class="password-strength-bar">
+                            <div class="password-strength-fill" id="passwordStrengthFill"></div>
+                        </div>
+                        <small id="passwordStrengthText" class="password-strength-text"></small>
+                    </div>
+
+                    <!-- Password Requirements Checklist -->
+                    <div class="password-requirements" id="passwordRequirements">
+                        <small class="requirement" id="req-length">○ At least 12 characters</small>
+                        <small class="requirement" id="req-uppercase">○ Uppercase letter (A-Z)</small>
+                        <small class="requirement" id="req-lowercase">○ Lowercase letter (a-z)</small>
+                        <small class="requirement" id="req-digit">○ Number (0-9)</small>
+                        <small class="requirement" id="req-special">○ Special character</small>
+                    </div>
+
+                    <!-- Breach Check Status -->
+                    <div class="breach-check-status" id="breachCheckStatus" style="display: none;">
+                        <small id="breachCheckText"></small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="displayname">Display Name</label>
+                    <input type="text" id="displayname">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Groups</label>
+                    <div>
+                        <label style="display: inline-flex; align-items: center; margin-right: 1rem;">
+                            <input type="checkbox" name="groups" value="users" checked style="width: auto; margin-right: 0.5rem;">
+                            Users
+                        </label>
+                        <label style="display: inline-flex; align-items: center;">
+                            <input type="checkbox" name="groups" value="admins" style="width: auto; margin-right: 0.5rem;">
+                            Admins
+                        </label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Create User</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('userModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Import CSV Modal -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Users from CSV</h2>
+            </div>
+            <div id="importAlert"></div>
+            <div class="alert alert-info">
+                <strong>CSV Format:</strong> Required columns are <code>username</code>, <code>password</code>, <code>email</code>.
+                Optional: <code>displayname</code>, <code>groups</code> (comma-separated).
+            </div>
+            <div class="file-upload-zone" id="uploadZone">
+                <p style="margin-bottom: 0.5rem;">📁 Click to select or drag & drop CSV file</p>
+                <small style="color: #718096;">Maximum file size: 5MB</small>
+                <input type="file" id="csvFile" accept=".csv" class="hidden">
+            </div>
+            <div id="importResults" class="import-results hidden"></div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="uploadCSV()" id="uploadBtn">Upload</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('importModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal" id="passwordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+            </div>
+            <div id="passwordAlert"></div>
+            <form id="passwordForm">
+                <input type="hidden" id="passwordUsername">
+                <div class="form-group">
+                    <label for="newPassword">New Password *</label>
+                    <input type="password" id="newPassword" required>
+
+                    <!-- Password Strength Meter -->
+                    <div class="password-strength-container">
+                        <div class="password-strength-bar">
+                            <div class="password-strength-fill" id="newPasswordStrengthFill"></div>
+                        </div>
+                        <small id="newPasswordStrengthText" class="password-strength-text"></small>
+                    </div>
+
+                    <!-- Password Requirements Checklist -->
+                    <div class="password-requirements" id="newPasswordRequirements">
+                        <small class="requirement" id="new-req-length">○ At least 12 characters</small>
+                        <small class="requirement" id="new-req-uppercase">○ Uppercase letter (A-Z)</small>
+                        <small class="requirement" id="new-req-lowercase">○ Lowercase letter (a-z)</small>
+                        <small class="requirement" id="new-req-digit">○ Number (0-9)</small>
+                        <small class="requirement" id="new-req-special">○ Special character</small>
+                    </div>
+
+                    <!-- Breach Check Status -->
+                    <div class="breach-check-status" id="newPasswordBreachCheckStatus" style="display: none;">
+                        <small id="newPasswordBreachCheckText"></small>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Change Password</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('passwordModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allUsers = [];
+        let currentSort = { column: 'username', direction: 'asc' };
+        let csrfToken = '';
+
+        // Fetch CSRF token
+        async function fetchCSRFToken() {
+            try {
+                const response = await fetch('/api/admin/csrf-token');
+                const data = await response.json();
+                csrfToken = data.csrf_token;
+            } catch (error) {
+                console.error('Error fetching CSRF token:', error);
+            }
+        }
+
+        // Helper function to add CSRF token to fetch requests
+        function getFetchOptions(method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            };
+            if (body) options.body = JSON.stringify(body);
+            return options;
+        }
+
+        // Password validation functions
+        function validatePasswordRequirements(password, fieldPrefix) {
+            const prefix = fieldPrefix === 'newPassword' ? 'new-' : '';
+
+            // Check each requirement
+            const hasLength = password.length >= 12;
+            const hasUppercase = /[A-Z]/.test(password);
+            const hasLowercase = /[a-z]/.test(password);
+            const hasDigit = /[0-9]/.test(password);
+            const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+            // Update UI for each requirement
+            document.getElementById(`${prefix}req-length`).classList.toggle('met', hasLength);
+            document.getElementById(`${prefix}req-uppercase`).classList.toggle('met', hasUppercase);
+            document.getElementById(`${prefix}req-lowercase`).classList.toggle('met', hasLowercase);
+            document.getElementById(`${prefix}req-digit`).classList.toggle('met', hasDigit);
+            document.getElementById(`${prefix}req-special`).classList.toggle('met', hasSpecial);
+
+            return {hasLength, hasUppercase, hasLowercase, hasDigit, hasSpecial};
+        }
+
+        function updatePasswordStrength(password, fieldPrefix) {
+            const fillId = fieldPrefix === 'newPassword' ? 'newPasswordStrengthFill' : 'passwordStrengthFill';
+            const textId = fieldPrefix === 'newPassword' ? 'newPasswordStrengthText' : 'passwordStrengthText';
+
+            const fill = document.getElementById(fillId);
+            const text = document.getElementById(textId);
+
+            if (password.length === 0) {
+                fill.className = 'password-strength-fill';
+                text.textContent = '';
+                text.className = 'password-strength-text';
+                return;
+            }
+
+            // Calculate strength score
+            let score = 0;
+            if (password.length >= 12) score++;
+            if (password.length >= 16) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[^A-Za-z0-9]/.test(password)) score++;
+
+            // Determine strength level
+            let strength = 'weak';
+            let label = 'Weak';
+
+            if (score >= 5) {
+                strength = 'strong';
+                label = 'Strong';
+            } else if (score >= 3) {
+                strength = 'medium';
+                label = 'Medium';
+            }
+
+            fill.className = `password-strength-fill ${strength}`;
+            text.className = `password-strength-text ${strength}`;
+            text.textContent = `Password Strength: ${label}`;
+        }
+
+        async function checkPasswordBreach(password, fieldPrefix) {
+            const statusId = fieldPrefix === 'newPassword' ? 'newPasswordBreachCheckStatus' : 'breachCheckStatus';
+            const textId = fieldPrefix === 'newPassword' ? 'newPasswordBreachCheckText' : 'breachCheckText';
+
+            const statusDiv = document.getElementById(statusId);
+            const textEl = document.getElementById(textId);
+
+            // Show checking status
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'breach-check-status checking';
+            textEl.textContent = '🔍 Checking password against breach databases...';
+
+            try {
+                // Hash the password with SHA-1
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+                const prefix = hashHex.substring(0, 5);
+                const suffix = hashHex.substring(5);
+
+                // Query HaveIBeenPwned API
+                const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+                const text = await response.text();
+
+                // Check if our suffix appears in the response
+                let breachCount = 0;
+                for (const line of text.split('\n')) {
+                    const [hashSuffix, count] = line.split(':');
+                    if (hashSuffix === suffix) {
+                        breachCount = parseInt(count);
+                        break;
+                    }
+                }
+
+                if (breachCount > 0) {
+                    statusDiv.className = 'breach-check-status breached';
+                    textEl.textContent = `❌ This password has been found in ${breachCount.toLocaleString()} data breaches! Please choose a different password.`;
+                } else {
+                    statusDiv.className = 'breach-check-status safe';
+                    textEl.textContent = '✓ Password not found in known data breaches';
+                }
+            } catch (error) {
+                console.error('Breach check failed:', error);
+                statusDiv.style.display = 'none';
+            }
+        }
+
+        // Load users on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchCSRFToken();
+            loadUsers();
+            loadStats();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Search
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                filterUsers(e.target.value);
+            });
+
+            // Sort headers
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const column = th.dataset.sort;
+                    sortUsers(column);
+                });
+            });
+
+            // File upload zone
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('csvFile');
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                }
+            });
+
+            // Form submissions
+            document.getElementById('userForm').addEventListener('submit', handleUserSubmit);
+            document.getElementById('passwordForm').addEventListener('submit', handlePasswordSubmit);
+
+            // Password validation for create user form
+            const passwordInput = document.getElementById('password');
+            let passwordDebounceTimer;
+
+            passwordInput.addEventListener('input', (e) => {
+                const password = e.target.value;
+                validatePasswordRequirements(password, 'password');
+                updatePasswordStrength(password, 'password');
+
+                // Debounce breach check (wait 500ms after typing stops)
+                clearTimeout(passwordDebounceTimer);
+                if (password.length >= 8) {
+                    passwordDebounceTimer = setTimeout(() => {
+                        checkPasswordBreach(password, 'password');
+                    }, 500);
+                } else {
+                    document.getElementById('breachCheckStatus').style.display = 'none';
+                }
+            });
+
+            // Password validation for change password form
+            const newPasswordInput = document.getElementById('newPassword');
+            let newPasswordDebounceTimer;
+
+            newPasswordInput.addEventListener('input', (e) => {
+                const password = e.target.value;
+                validatePasswordRequirements(password, 'newPassword');
+                updatePasswordStrength(password, 'newPassword');
+
+                // Debounce breach check
+                clearTimeout(newPasswordDebounceTimer);
+                if (password.length >= 8) {
+                    newPasswordDebounceTimer = setTimeout(() => {
+                        checkPasswordBreach(password, 'newPassword');
+                    }, 500);
+                } else {
+                    document.getElementById('newPasswordBreachCheckStatus').style.display = 'none';
+                }
+            });
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                if (!response.ok) throw new Error('Failed to load users');
+
+                const data = await response.json();
+                allUsers = data.users;
+                renderUsers(allUsers);
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersTableBody').innerHTML = `
+                    <tr><td colspan="5" style="text-align: center; padding: 3rem; color: #e53e3e;">
+                        Error loading users: ${error.message}
+                    </td></tr>
+                `;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/admin/stats');
+                if (!response.ok) return;
+
+                const stats = await response.json();
+                document.getElementById('totalUsers').textContent = stats.total_users;
+                document.getElementById('adminUsers').textContent = stats.groups.admins || 0;
+                document.getElementById('regularUsers').textContent = stats.groups.users || 0;
+
+                // Show password expiration stats if expiration is enabled
+                if (stats.expiration_enabled && stats.password_expiration) {
+                    const pwStats = stats.password_expiration;
+
+                    // Show expired passwords card
+                    if (pwStats.expired > 0) {
+                        document.getElementById('expiredPasswordsCard').style.display = 'block';
+                        document.getElementById('expiredPasswords').textContent = pwStats.expired;
+                    }
+
+                    // Show expiring soon card
+                    if (pwStats.expiring_soon > 0) {
+                        document.getElementById('expiringSoonCard').style.display = 'block';
+                        document.getElementById('expiringSoon').textContent = pwStats.expiring_soon;
+                    }
+
+                    // Show healthy passwords card
+                    if (pwStats.healthy > 0) {
+                        document.getElementById('healthyPasswordsCard').style.display = 'block';
+                        document.getElementById('healthyPasswords').textContent = pwStats.healthy;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+
+            if (users.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="7" style="text-align: center; padding: 3rem; color: #718096;">
+                        No users found
+                    </td></tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => {
+                // Format password age
+                let passwordAge = '—';
+                if (user.password_age_days !== null && user.password_age_days !== undefined) {
+                    passwordAge = user.password_age_days === 0 ? 'Today' : `${user.password_age_days} days`;
+                } else if (user.password_changed_at) {
+                    passwordAge = 'Unknown';
+                } else {
+                    passwordAge = 'Never';
+                }
+
+                // Format status badge
+                let statusBadge = '';
+                if (user.password_status === 'expired') {
+                    statusBadge = '<span class="status-badge status-expired">❌ EXPIRED</span>';
+                } else if (user.password_status === 'expiring_soon') {
+                    const days = user.password_expires_in_days;
+                    statusBadge = `<span class="status-badge status-expiring">⚠️ ${days} day${days === 1 ? '' : 's'} left</span>`;
+                } else if (user.password_status === 'ok') {
+                    statusBadge = '<span class="status-badge status-ok">✓ OK</span>';
+                } else {
+                    statusBadge = '<span class="status-badge status-unknown">—</span>';
+                }
+
+                return `
+                <tr>
+                    <td><strong>${escapeHtml(user.username)}</strong></td>
+                    <td>${escapeHtml(user.displayname)}</td>
+                    <td>${escapeHtml(user.email)}</td>
+                    <td>
+                        ${user.groups.map(g => `
+                            <span class="badge ${g === 'admins' ? 'admin' : ''}">${escapeHtml(g)}</span>
+                        `).join('')}
+                    </td>
+                    <td>${passwordAge}</td>
+                    <td>${statusBadge}</td>
+                    <td class="actions">
+                        <button class="btn btn-small btn-secondary" onclick="openPasswordModal('${escapeHtml(user.username)}')">
+                            Change Password
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="deleteUser('${escapeHtml(user.username)}')">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        function filterUsers(searchTerm) {
+            const term = searchTerm.toLowerCase();
+            const filtered = allUsers.filter(user =>
+                user.username.toLowerCase().includes(term) ||
+                user.displayname.toLowerCase().includes(term) ||
+                user.email.toLowerCase().includes(term) ||
+                user.groups.some(g => g.toLowerCase().includes(term))
+            );
+            renderUsers(filtered);
+        }
+
+        function sortUsers(column) {
+            // Update sort direction
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            // Update header classes
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.sort === column) {
+                    th.classList.add(`sort-${currentSort.direction}`);
+                }
+            });
+
+            // Sort users
+            allUsers.sort((a, b) => {
+                let aVal = column === 'groups' ? a[column].join(',') : a[column];
+                let bVal = column === 'groups' ? b[column].join(',') : b[column];
+
+                aVal = aVal.toLowerCase();
+                bVal = bVal.toLowerCase();
+
+                if (currentSort.direction === 'asc') {
+                    return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                } else {
+                    return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                }
+            });
+
+            const searchTerm = document.getElementById('searchInput').value;
+            if (searchTerm) {
+                filterUsers(searchTerm);
+            } else {
+                renderUsers(allUsers);
+            }
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Add New User';
+            document.getElementById('userForm').reset();
+            document.getElementById('passwordGroup').classList.remove('hidden');
+            document.getElementById('submitBtn').textContent = 'Create User';
+            document.getElementById('modalAlert').innerHTML = '';
+            document.getElementById('userModal').classList.add('active');
+        }
+
+        function openPasswordModal(username) {
+            document.getElementById('passwordUsername').value = username;
+            document.getElementById('passwordForm').reset();
+            document.getElementById('passwordAlert').innerHTML = '';
+            document.getElementById('passwordModal').classList.add('active');
+        }
+
+        function openImportModal() {
+            document.getElementById('csvFile').value = '';
+            document.getElementById('importResults').innerHTML = '';
+            document.getElementById('importResults').classList.add('hidden');
+            document.getElementById('importAlert').innerHTML = '';
+            document.getElementById('importModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function handleUserSubmit(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const displayname = document.getElementById('displayname').value || username;
+            const email = document.getElementById('email').value;
+            const groups = Array.from(document.querySelectorAll('input[name="groups"]:checked'))
+                .map(cb => cb.value);
+
+            try {
+                const response = await fetch('/api/admin/users',
+                    getFetchOptions('POST', { username, password, displayname, email, groups })
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showAlert('modalAlert', 'error', data.error + (data.details ? ': ' + data.details.join(', ') : ''));
+                    return;
+                }
+
+                showAlert('modalAlert', 'success', 'User created successfully!');
+                setTimeout(() => {
+                    closeModal('userModal');
+                    loadUsers();
+                    loadStats();
+                }, 1500);
+            } catch (error) {
+                showAlert('modalAlert', 'error', 'Failed to create user: ' + error.message);
+            }
+        }
+
+        async function handlePasswordSubmit(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('passwordUsername').value;
+            const password = document.getElementById('newPassword').value;
+
+            try {
+                const response = await fetch(`/api/admin/users/${username}/password`,
+                    getFetchOptions('PUT', { password })
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showAlert('passwordAlert', 'error', data.error + (data.details ? ': ' + data.details.join(', ') : ''));
+                    return;
+                }
+
+                showAlert('passwordAlert', 'success', 'Password updated successfully!');
+                setTimeout(() => {
+                    closeModal('passwordModal');
+                }, 1500);
+            } catch (error) {
+                showAlert('passwordAlert', 'error', 'Failed to update password: ' + error.message);
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+
+            try {
+                const response = await fetch(`/api/admin/users/${username}`,
+                    getFetchOptions('DELETE')
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                loadUsers();
+                loadStats();
+            } catch (error) {
+                alert('Failed to delete user: ' + error.message);
+            }
+        }
+
+        async function exportUsers() {
+            try {
+                const response = await fetch('/api/admin/users/export');
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'authelia_users_export.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert('Failed to export users: ' + error.message);
+            }
+        }
+
+        async function uploadCSV() {
+            const fileInput = document.getElementById('csvFile');
+            if (!fileInput.files.length) {
+                showAlert('importAlert', 'error', 'Please select a CSV file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="loading"></span> Uploading...';
+
+            try {
+                const response = await fetch('/api/admin/users/bulk/import', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload';
+
+                if (!response.ok && response.status !== 207) {
+                    showAlert('importAlert', 'error', data.error + (data.details ? ': ' + data.details : ''));
+                    return;
+                }
+
+                // Show results
+                displayImportResults(data);
+                loadUsers();
+                loadStats();
+            } catch (error) {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload';
+                showAlert('importAlert', 'error', 'Failed to upload file: ' + error.message);
+            }
+        }
+
+        function displayImportResults(data) {
+            const resultsDiv = document.getElementById('importResults');
+            let html = `<div class="alert alert-success">
+                <strong>Import Complete:</strong> ${data.summary.success} successful,
+                ${data.summary.failed} failed, ${data.summary.skipped} skipped
+            </div>`;
+
+            if (data.results.failed.length > 0) {
+                html += `<div class="result-section">
+                    <h4 style="color: #e53e3e;">Failed (${data.results.failed.length})</h4>
+                    <div class="result-list">
+                        ${data.results.failed.map(f => `
+                            <div>Row ${f.row}: ${f.username} - ${f.error}</div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+
+            if (data.results.skipped.length > 0) {
+                html += `<div class="result-section">
+                    <h4 style="color: #d69e2e;">Skipped (${data.results.skipped.length})</h4>
+                    <div class="result-list">
+                        ${data.results.skipped.map(s => `
+                            <div>Row ${s.row}: ${s.username} - ${s.reason}</div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.remove('hidden');
+        }
+
+        function showAlert(elementId, type, message) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            document.getElementById(elementId).innerHTML = `
+                <div class="alert ${alertClass}">${escapeHtml(message)}</div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  authelia-file-admin:
+    build: .
+    container_name: authelia-file-admin
+    restart: unless-stopped
+
+    # Volume mounts
+    volumes:
+      # Mount Authelia config directory (contains users_database.yml)
+      - ./authelia:/config
+
+      # Mount Docker socket for restarting Authelia container
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Mount audit log directory
+      - ./logs:/var/log
+
+    # Environment configuration
+    environment:
+      # Paths
+      - USERS_DB_PATH=/config/users_database.yml
+      - AUDIT_LOG_PATH=/var/log/authelia-admin-audit.jsonl
+
+      # Password policy
+      - PASSWORD_MIN_LENGTH=12
+      - PASSWORD_REQUIRE_UPPERCASE=true
+      - PASSWORD_REQUIRE_LOWERCASE=true
+      - PASSWORD_REQUIRE_DIGIT=true
+      - PASSWORD_REQUIRE_SPECIAL=true
+
+    # Network configuration
+    networks:
+      - internal
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  # Join the existing Authelia stack network
+  internal:
+    external: true
+    # If you named your network differently, update this
+    # name: authelia-stack_internal

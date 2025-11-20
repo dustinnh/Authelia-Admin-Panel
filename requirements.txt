@@ -1,0 +1,17 @@
+# Core dependencies
+flask==3.0.0
+flask-cors==4.0.0
+pyyaml==6.0.1
+
+# Production WSGI server
+gunicorn==21.2.0
+
+# Security and rate limiting
+flask-limiter==3.5.0
+flask-wtf==1.2.1
+
+# Password hashing (Argon2id compatible with Authelia)
+argon2-cffi==23.1.0
+
+# File locking
+filelock==3.13.1
