@@ -2,7 +2,12 @@ version: '3.9'
 
 services:
   authelia-file-admin:
-    build: .
+    # Option 1: Use pre-built Docker Hub image (recommended)
+    image: dutdok4/authelia-admin:latest  # Or pin version: dutdok4/authelia-admin:1.10.0
+
+    # Option 2: Build from source (uncomment if cloning repo)
+    # build: .
+
     container_name: authelia-file-admin
     restart: unless-stopped
 
@@ -11,24 +16,29 @@ services:
       # Mount Authelia config directory (contains users_database.yml)
       - ./authelia:/config
 
-      # Mount Docker socket for restarting Authelia container
-      - /var/run/docker.sock:/var/run/docker.sock
-
       # Mount audit log directory
       - ./logs:/var/log
 
     # Environment configuration
     environment:
+      # Security Keys (REQUIRED - Generate with: openssl rand -base64 32)
+      # IMPORTANT: These must persist across container restarts!
+      - SECRET_KEY=${SECRET_KEY}          # Flask session encryption key
+      - AUDIT_HMAC_KEY=${AUDIT_HMAC_KEY}  # Audit log signing key
+
       # Paths
       - USERS_DB_PATH=/config/users_database.yml
       - AUDIT_LOG_PATH=/var/log/authelia-admin-audit.jsonl
 
-      # Password policy
+      # Password policy (customize as needed)
       - PASSWORD_MIN_LENGTH=12
       - PASSWORD_REQUIRE_UPPERCASE=true
       - PASSWORD_REQUIRE_LOWERCASE=true
       - PASSWORD_REQUIRE_DIGIT=true
       - PASSWORD_REQUIRE_SPECIAL=true
+      - PASSWORD_CHECK_BREACH=true        # Check against HaveIBeenPwned database
+      - PASSWORD_HISTORY_COUNT=5          # Prevent reuse of last 5 passwords
+      - PASSWORD_EXPIRATION_DAYS=0        # 0 = never expire (or set to 90 for 90-day rotation)
 
     # Network configuration
     networks:

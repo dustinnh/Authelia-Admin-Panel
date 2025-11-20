@@ -66,14 +66,16 @@ Interactive password strength meter, requirements checklist, and breach detectio
 
 ## Quick Start
 
-### Docker Compose (Recommended)
+### Option 1: Pre-Built Docker Image (Easiest)
+
+Use the pre-built image from Docker Hub - no build required!
 
 ```yaml
 version: '3.9'
 
 services:
   user-admin:
-    build: .
+    image: dutdok4/authelia-admin:latest  # Or pin to version: dutdok4/authelia-admin:1.10.0
     container_name: authelia-file-admin
     restart: unless-stopped
     volumes:
@@ -97,13 +99,36 @@ networks:
     external: true
 ```
 
-### Build and Run
+**Deploy:**
+```bash
+# Generate secrets (IMPORTANT - persist these!)
+echo "SECRET_KEY=$(openssl rand -base64 32)" >> .env
+echo "AUDIT_HMAC_KEY=$(openssl rand -base64 32)" >> .env
+
+# Start the service
+docker compose up -d
+```
+
+**Docker Hub Repository:** https://hub.docker.com/r/dutdok4/authelia-admin
+
+### Option 2: Build from Source
+
+If you want to build the image yourself or customize the code:
 
 ```bash
+# Clone the repository
+git clone https://github.com/dustinnh/Authelia-Admin-Panel.git
+cd Authelia-Admin-Panel
+
 # Build the image
 docker build -t authelia-file-admin .
 
-# Run the container (for testing - use Docker Compose for production)
+# Run with Docker Compose (update docker-compose.yml to use build: .)
+docker compose up -d
+```
+
+Or run directly for testing:
+```bash
 docker run -d \
   --name authelia-file-admin \
   -v /path/to/authelia:/config \
@@ -522,12 +547,13 @@ However, if you're deploying a **complete SSO authentication gateway from scratc
 The **Walled Garden** provides a complete production-ready architecture that includes:
 
 - ✅ **Complete Caddy + Authelia Setup** - Reverse proxy with automatic HTTPS
-- ✅ **This Admin Panel Pre-Configured** - Included as the `/admin` endpoint
+- ✅ **This Admin Panel Pre-Configured** - Included as pre-built Docker image, no separate installation needed
 - ✅ **Multiple Service Integrations** - Examples for popular self-hosted services
 - ✅ **Application Dashboard** - Unified launcher for all services
 - ✅ **Comprehensive Documentation** - 1,900+ line deployment guide
 - ✅ **Deployment Scripts** - Automated staging and production deployment
 - ✅ **Reference Architecture** - Production-tested network topology
+- ✅ **One-Command Deployment** - Just `git clone` and `docker compose up -d`
 
 **Perfect for:**
 - Deploying a complete authentication gateway from scratch
