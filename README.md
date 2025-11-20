@@ -511,6 +511,47 @@ Found a bug or have a feature request? [Open an issue](https://github.com/dustin
 - Prioritize security and quality
 - Help build a welcoming community
 
+## Part of Larger Architecture
+
+This admin panel is designed to work with **any Authelia setup**, making it perfect for standalone integration with your existing deployment.
+
+However, if you're deploying a **complete SSO authentication gateway from scratch**, check out the comprehensive reference architecture:
+
+### 🏰 [Authelia Walled Garden - Complete SSO Reference Architecture](https://github.com/dustinnh/Walled-Garden)
+
+The **Walled Garden** provides a complete production-ready architecture that includes:
+
+- ✅ **Complete Caddy + Authelia Setup** - Reverse proxy with automatic HTTPS
+- ✅ **This Admin Panel Pre-Configured** - Included as the `/admin` endpoint
+- ✅ **Multiple Service Integrations** - Examples for popular self-hosted services
+- ✅ **Application Dashboard** - Unified launcher for all services
+- ✅ **Comprehensive Documentation** - 1,900+ line deployment guide
+- ✅ **Deployment Scripts** - Automated staging and production deployment
+- ✅ **Reference Architecture** - Production-tested network topology
+
+**Perfect for:**
+- Deploying a complete authentication gateway from scratch
+- Learning SSO architecture and best practices
+- Integrating multiple services behind Authelia
+- Understanding how all components work together
+
+**This admin panel is included** in the Walled Garden as the user management component, but can also be used independently with your existing Authelia setup.
+
+### Standalone vs. Integrated Use
+
+**Use Standalone** if you:
+- Already have Authelia running (with Nginx, Traefik, etc.)
+- Just need web-based user management
+- Want to add GUI admin to existing deployment
+
+**Use Walled Garden** if you:
+- Need complete SSO gateway from scratch
+- Want Caddy + Authelia + services configured
+- Need comprehensive deployment documentation
+- Want production-ready reference architecture
+
+Both approaches are fully supported!
+
 ## License
 
 GNU General Public License v3.0 - See [LICENSE](LICENSE) file for details.
